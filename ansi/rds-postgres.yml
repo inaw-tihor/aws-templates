@@ -1,0 +1,81 @@
+---
+- name: Create AWS RDS PostgreSQL Instance
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    aws_region: us-east-1
+
+    db_username: admin
+    db_password: password
+
+    vpc_id: vpc-0ccb9ffac0e9f3362
+    subnet_1: subnet-011b81063083e6df6
+    subnet_2: subnet-01c030dfe155d8619
+
+    db_instance_identifier: my-postgres-db
+    db_name: mydb
+    db_instance_class: db.t3.micro
+    engine_version: "15.12"
+
+  tasks:
+
+    - name: Create Secrets Manager secret
+      community.aws.aws_secret:
+        name: rdsPostgresCredentials
+        description: Credentials for RDS PostgreSQL instance
+        json_secret:
+          username: "{{ db_username }}"
+          password: "{{ db_password }}"
+        state: present
+        region: "{{ aws_region }}"
+      register: rds_secret
+
+    - name: Create security group for RDS
+      amazon.aws.ec2_group:
+        name: rds-postgres-sg
+        description: Allow PostgreSQL access
+        vpc_id: "{{ vpc_id }}"
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            from_port: 5432
+            to_port: 5432
+            cidr_ip: 0.0.0.0/0
+        state: present
+      register: rds_sg
+
+    - name: Create DB subnet group
+      community.aws.rds_subnet_group:
+        state: present
+        name: rds-postgres-subnet-group
+        description: Subnet group with two subnets
+        subnets:
+          - "{{ subnet_1 }}"
+          - "{{ subnet_2 }}"
+        region: "{{ aws_region }}"
+
+    - name: Create RDS PostgreSQL instance
+      amazon.aws.rds_instance:
+        db_instance_identifier: "{{ db_instance_identifier }}"
+        db_instance_class: "{{ db_instance_class }}"
+        engine: postgres
+        engine_version: "{{ engine_version }}"
+        allocated_storage: 10
+        username: "{{ db_username }}"
+        password: "{{ db_password }}"
+        db_name: "{{ db_name }}"
+        vpc_security_group_ids:
+          - "{{ rds_sg.group_id }}"
+        publicly_accessible: true
+        db_subnet_group_name: rds-postgres-subnet-group
+        backup_retention_period: 1
+        preferred_backup_window: "03:00-04:00"
+        multi_az: false
+        storage_type: gp2
+        deletion_protection: false
+        state: present
+        region: "{{ aws_region }}"
+        wait: true
+      register: rds
+
