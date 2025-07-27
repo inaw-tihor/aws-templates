@@ -1,0 +1,12 @@
+- name: Create private S3 bucket
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Create S3 bucket
+      amazon.aws.s3_bucket:
+        name: my-private-bucket-{{ 9999 | random }}
+        state: present
+        region: us-east-1
+        versioning: true
