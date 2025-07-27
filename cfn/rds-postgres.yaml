@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Minimal-cost RDS PostgreSQL (db.t3.micro, 10GB) with backup and credentials in Secrets Manager
+
+Parameters:
+  DBUsername:
+    Type: String
+    Default: SSadmin
+    NoEcho: true
+
+  DBPassword:
+    Type: String
+    Default: SSPa$$w0rd
+    NoEcho: true
+    MinLength: 8
+
+  DefaultVPC:
+    Type: AWS::EC2::VPC::Id
+    Description: Select the VPC to launch the RDS instance in
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: First public subnet in different AZ
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Second public subnet in different AZ
+
+Resources:
+
+  RDSSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: rdsPostgresCredentials
+      Description: Credentials for RDS PostgreSQL instance
+      SecretString: !Sub |
+        {
+          "username": "${DBUsername}",
+          "password": "${DBPassword}"
+        }
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL access
+      VpcId: !Ref DefaultVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0  # Open to all - for dev/testing only
+
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group with two subnets
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      EngineVersion: "15.12"
+      AllocatedStorage: 10
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: mydb
+      BackupRetentionPeriod: 1
+      PreferredBackupWindow: "03:00-04:00"
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      PubliclyAccessible: true
+      DeletionProtection: false
+      MultiAZ: false
+      StorageType: gp2
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: The RDS endpoint
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  SecretARN:
+    Description: ARN of the secret with DB credentials
+    Value: !Ref RDSSecret
