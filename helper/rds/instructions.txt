@@ -1,14 +1,15 @@
-A. To create backup of aws rds postgres database follow below steps:
-  1. collect DBInstanceIdentifier from user and assign the value to the variable DBInstanceIdentifier in backup.py
-  2. run the command 'python backup.py'. This will create the snapshot for the database instance with the given identifier
+A. To create backup of aws rds postgres database use file 'backup.py' as it is. this file has :
+  1. a variable DBInstanceIdentifier which the identifies the aws rds db whose backup/snapshot is to be taken
+  2. user running the command 'python backup.py' will create the snapshot for the database instance with the given identifier
+  3. all the code in the file 'backup.py' should be used as it is without change for this backup script. If user wants he/she will change the variable values, we will not change them.
 
-B. To resotre the aws rds postgres database using a previously created snapshot follow below steps:
-  1. collect below variables -
+B. To restore the aws rds postgres database using a previously created snapshot use file 'restore.py'
+  1. it has below variables -
         snapshot_identifier -> this is the identifier of the previously created snapshot
         restored_db_instance_identifier -> this will be the identifier of the restored database. default generate 'restored-postgres-db' + currenttimestamp
         db_instance_class -> default will be 'db.t3.micro'
         subnet_group -> this will the subnet group name to be used for the new database.  # e.g., 'rds-postgres-minimal-rdssubnetgroup-oflw3loljjco'
         security_group_id -> this will the security group id to be used for the new database. # e.g., 'sg-0e094088610e3644b'
         region -> this will be the aws region in which the new database is to be restored in. default will be 'us-east-1'
-   2. subsitute above variable values at respective places in the file restore.py
-   3. run the command 'python restore.py'
+   2. all the code in the file 'restore.py' should be used as it is without change for the restore script. If user wants he/she will change the variable values, we will not change them.
+   3. user running the command 'python restore.py' will restore the snapshot
